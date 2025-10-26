@@ -1,0 +1,21 @@
+{
+  "child_001": {
+    "name": "Arya",
+    "age": 9,
+    "prefs": {
+      "music": true,
+      "videos": true,
+      "movement": true
+    },
+    "fav_music": [
+      "soft_piano.mp3"
+    ],
+    "fav_videos": [
+      "cartoon_clip_1.mp4"
+    ],
+    "movement_pref": "gentle_spin",
+    "rec_scores": {
+      "music_snippet": 2.0000000000000004
+    }
+  }
+}
