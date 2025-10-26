@@ -1,105 +1,114 @@
 """
 main.py
-Orchestrates FER -> Recommender -> Display -> Robot actions
-Run this on your Raspberry Pi. Adjust serial port for your robot in ROBOT_SERIAL variable.
-
-Behavior:
- - Detects emotion from camera
- - Shows appropriate eyes on fullscreen display
- - Sends robot motor/behavior commands
- - After performing action, waits a few seconds and re-checks emotion to record feedback
+KOKO: Emotion-Aware Interactive Robot
+Detects emotion from PiCamera5, shows eyes on 9.7" display via display_eyes.py, triggers robot actions.
+Press 'q' or ESC to quit safely.
 """
 
 import time
 import random
-from fer_integration import FERWrapper
-from recommender_engine import load_profiles, save_profiles, recommend_for_child, apply_feedback, ASSETS
-from robot_controller import RobotController
+import cv2
+import pygame
+from picamera2 import Picamera2
+from fer import FER
+
 from display_eyes import EyeDisplay
+from robot_controller import RobotController  # your robot action module
 
-# Config
-ROBOT_SERIAL = None   # e.g. '/dev/ttyUSB0' if you use Arduino; None = no hardware (prints only)
-CAMERA_DEVICE = 0
-LOOP_DELAY = 1.0      # seconds between detections
-AFTER_DELAY = 3.0     # seconds to wait after action and then re-evaluate emotion for feedback
-ITERATIONS = None     # None for infinite loop, or int to limit
+# ---------------- Configuration ----------------
+ROBOT_SERIAL = None       # e.g., '/dev/ttyUSB0' if you have Arduino/robot
+LOOP_DELAY = 1.0          # seconds between detections
+AFTER_DELAY = 3.0         # seconds to keep eyes/action active
+ITERATIONS = None         # None = infinite loop
 
+# Emotion -> Robot Action mapping
+EMO_ACTION_MAP = {
+    "happy": "spin",
+    "sad": "gentle_forward",
+    "angry": "calm_movement",
+    "neutral": "idle",
+    "surprise": "jump",
+    "fear": "hide"
+}
+
+# ---------------- Main Loop ----------------
 def main():
-    print("Starting KOKO main loop...")
-    profiles = load_profiles()
-    child_id = "child_001"
-    profile = profiles[child_id]
+    print("Starting KOKO main loop... Press 'q' or ESC to quit.")
 
-    # init modules
-    fer = FERWrapper(device=CAMERA_DEVICE)
+    # Initialize modules
+    detector = FER(mtcnn=True)
+    picam2 = Picamera2()
+    config = picam2.create_preview_configuration(
+        main={"format": "XRGB8888", "size": (640, 480)}
+    )
+    picam2.configure(config)
+    picam2.start()
+    time.sleep(2)  # warm-up
+
     robot = RobotController(serial_port=ROBOT_SERIAL)
-    display = EyeDisplay(fullscreen=True)  # will open 9.7" display in fullscreen (or monitor)
+    display = EyeDisplay(fullscreen=True)
+
+    counter = 0
+    running = True
 
     try:
-        counter = 0
-        while True:
+        while running:
             counter += 1
             if ITERATIONS and counter > ITERATIONS:
                 break
-            # detect before emotion
-            frame, ok = fer.read_frame()
-            if ok:
-                before_emotion, conf = fer.detect(frame)
+
+            # Capture frame from PiCamera
+            frame = picam2.capture_array()
+            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+            # Detect emotions
+            results = detector.detect_emotions(frame_rgb)
+            if results:
+                face = max(results, key=lambda x: x['box'][2]*x['box'][3])
+                emotions = face['emotions']
+                emotion = max(emotions, key=emotions.get)
+                conf = emotions[emotion]
             else:
-                before_emotion, conf = "neutral", 0.0
-            print(f"[MAIN] BEFORE: {before_emotion} (conf {conf:.2f})")
+                emotion, conf = "neutral", 0.0
 
-            # get recommendation (single best)
-            picks = recommend_for_child(profile, before_emotion, top_k=1)
-            if not picks:
-                action_key = "idle_patrol"
-            else:
-                action_key = picks[0]
-            print(f"[MAIN] ACTION -> {action_key}")
+            print(f"[MAIN] Emotion: {emotion} (conf {conf:.2f})")
 
-            # show eyes animation for this emotion
-            display.show_emotion(before_emotion)
+            # Show eyes
+            display.show_emotion(emotion)
 
-            # send robot action
-            # map action_key to asset choices if required
-            asset_list = ASSETS.get(action_key, [action_key])
-            chosen_asset = random.choice(asset_list)
-            robot.send_action(action_key)  # robot_controller expects the action_key
+            # Trigger robot action
+            action = EMO_ACTION_MAP.get(emotion, "idle")
+            robot.send_action(action)
+            print(f"[MAIN] Action: {action}")
 
-            # update display for a bit while action runs
+            # Keep display updated while waiting AFTER_DELAY
             t0 = time.time()
             while time.time() - t0 < AFTER_DELAY:
                 display.update(fps=30)
 
-            # evaluate after emotion for feedback
-            frame2, ok2 = fer.read_frame()
-            if ok2:
-                after_emotion, conf2 = fer.detect(frame2)
-            else:
-                after_emotion, conf2 = "neutral", 0.0
-            print(f"[MAIN] AFTER: {after_emotion} (conf {conf2:.2f})")
-
-            # apply feedback to adjust learned scores
-            delta = apply_feedback(profile, action_key, before_emotion, after_emotion)
-            print(f"[MAIN] Feedback applied: {delta:+.2f} to {action_key}")
-
-            # persist profiles
-            save_profiles(profiles)
-
-            # keep updating display while waiting for next iteration
+            # Wait before next detection
             t1 = time.time()
             while time.time() - t1 < LOOP_DELAY:
                 display.update(fps=30)
 
+            # Check for quit via pygame events
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                elif event.type == pygame.KEYDOWN:
+                    if event.key in [pygame.K_q, pygame.K_ESCAPE]:
+                        running = False
+
     except KeyboardInterrupt:
-        print("Interrupted by user, shutting down.")
+        print("Interrupted by user.")
+
     finally:
         print("Cleaning up...")
+        picam2.stop()
         display.close()
-        fer.release()
         robot.close()
-        save_profiles(profiles)
         print("Shutdown complete.")
+
 
 if __name__ == "__main__":
     main()

@@ -1,21 +1,31 @@
-# test_emotion.py
+from picamera2 import Picamera2
 from fer import FER
 import cv2
+import numpy as np
+import time
 
 def main():
+    # Initialize FER detector
     detector = FER(mtcnn=True)
-    cap = cv2.VideoCapture(0)  # Camera index (0 for USB cam or CSI cam)
+    
+    # Initialize PiCamera2
+    picam2 = Picamera2()
+    config = picam2.create_preview_configuration(main={"format": "XRGB8888", "size": (640, 480)})
+    picam2.configure(config)
+    picam2.start()
+    time.sleep(2)  # Allow camera to warm up
 
+    print("KOKO Emotion Detection Started")
     print("Press 'q' to quit.")
 
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Camera not detected!")
-            break
+        # Capture frame from camera
+        frame = picam2.capture_array()
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # Detect emotions
         results = detector.detect_emotions(frame)
+
         if results:
             face = max(results, key=lambda x: x['box'][2] * x['box'][3])
             emotions = face['emotions']
@@ -25,15 +35,15 @@ def main():
         else:
             print("No face detected")
 
-        # Show live feed
+        # Show the live camera feed
         cv2.imshow("KOKO Emotion Detection", frame)
 
-        # Quit on 'q'
+        # Press 'q' to quit safely
         if cv2.waitKey(1) & 0xFF == ord('q'):
             print("Shutting down...")
             break
 
-    cap.release()
+    picam2.stop()
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
