@@ -1,39 +1,45 @@
 """
 main.py
 KOKO: Emotion-Aware Interactive Robot
-Detects emotion from PiCamera5, shows eyes on 9.7" display via display_eyes.py, triggers robot actions.
-Press 'q' or ESC to quit safely.
+Fully integrated with Recommender Engine + Feedback Learning.
+- Detects emotion from PiCamera
+- Shows eyes on 9.7" display via display_eyes.py
+- Sends robot actions
+- Learns which actions improve emotions over time
 """
 
 import time
 import random
 import cv2
-import pygame
 from picamera2 import Picamera2
 from fer import FER
+import pygame
 
 from display_eyes import EyeDisplay
-from robot_controller import RobotController  # your robot action module
+from robot_controller import RobotController
+from recommender_engine import (
+    load_profiles,
+    save_profiles,
+    recommend_for_child,
+    apply_feedback,
+    get_assets
+)
 
 # ---------------- Configuration ----------------
-ROBOT_SERIAL = None       # e.g., '/dev/ttyUSB0' if you have Arduino/robot
+ROBOT_SERIAL = None       # e.g., '/dev/ttyUSB0' for Arduino
+CAMERA_DEVICE = 0
 LOOP_DELAY = 1.0          # seconds between detections
 AFTER_DELAY = 3.0         # seconds to keep eyes/action active
 ITERATIONS = None         # None = infinite loop
 
-# Emotion -> Robot Action mapping
-EMO_ACTION_MAP = {
-    "happy": "spin",
-    "sad": "gentle_forward",
-    "angry": "calm_movement",
-    "neutral": "idle",
-    "surprise": "jump",
-    "fear": "hide"
-}
-
 # ---------------- Main Loop ----------------
 def main():
-    print("Starting KOKO main loop... Press 'q' or ESC to quit.")
+    print("Starting KOKO main loop... Press 'q' or ESC to quit safely.")
+
+    # Load profiles
+    profiles = load_profiles()
+    child_id = "child_001"
+    profile = profiles[child_id]
 
     # Initialize modules
     detector = FER(mtcnn=True)
@@ -57,11 +63,11 @@ def main():
             if ITERATIONS and counter > ITERATIONS:
                 break
 
-            # Capture frame from PiCamera
+            # Capture frame
             frame = picam2.capture_array()
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            # Detect emotions
+            # Detect emotion
             results = detector.detect_emotions(frame_rgb)
             if results:
                 face = max(results, key=lambda x: x['box'][2]*x['box'][3])
@@ -71,32 +77,59 @@ def main():
             else:
                 emotion, conf = "neutral", 0.0
 
-            print(f"[MAIN] Emotion: {emotion} (conf {conf:.2f})")
+            print(f"[MAIN] Emotion Detected: {emotion} (conf {conf:.2f})")
 
             # Show eyes
             display.show_emotion(emotion)
 
-            # Trigger robot action
-            action = EMO_ACTION_MAP.get(emotion, "idle")
-            robot.send_action(action)
-            print(f"[MAIN] Action: {action}")
+            # Get top recommendation(s)
+            picks = recommend_for_child(profile, emotion, top_k=1)
+            if picks:
+                action_key = picks[0]
+            else:
+                action_key = "idle_patrol"
 
-            # Keep display updated while waiting AFTER_DELAY
+            # Trigger robot action
+            robot.send_action(action_key)
+            print(f"[MAIN] Action Triggered: {action_key}")
+
+            # Keep display active while action runs
             t0 = time.time()
             while time.time() - t0 < AFTER_DELAY:
                 display.update(fps=30)
 
-            # Wait before next detection
+            # Re-evaluate emotion after action for feedback
+            frame2 = picam2.capture_array()
+            frame2_rgb = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB)
+            results2 = detector.detect_emotions(frame2_rgb)
+            if results2:
+                face2 = max(results2, key=lambda x: x['box'][2]*x['box'][3])
+                emotions2 = face2['emotions']
+                after_emotion = max(emotions2, key=emotions2.get)
+                conf2 = emotions2[after_emotion]
+            else:
+                after_emotion, conf2 = "neutral", 0.0
+
+            print(f"[MAIN] After Emotion: {after_emotion} (conf {conf2:.2f})")
+
+            # Apply feedback to improve recommendations
+            delta = apply_feedback(profile, action_key, emotion, after_emotion)
+            print(f"[MAIN] Feedback applied: {delta:+.2f} to {action_key}")
+
+            # Persist profiles
+            save_profiles(profiles)
+
+            # Wait for next iteration
             t1 = time.time()
             while time.time() - t1 < LOOP_DELAY:
                 display.update(fps=30)
 
-            # Check for quit via pygame events
+            # Handle quit events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
                 elif event.type == pygame.KEYDOWN:
-                    if event.key in [pygame.K_q, pygame.K_ESCAPE]:
+                    if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
                         running = False
 
     except KeyboardInterrupt:
@@ -107,6 +140,7 @@ def main():
         picam2.stop()
         display.close()
         robot.close()
+        save_profiles(profiles)
         print("Shutdown complete.")
 
 

@@ -15,7 +15,12 @@
     ],
     "movement_pref": "gentle_spin",
     "rec_scores": {
-      "music_snippet": 2.800000000000001
+      "calm_breathing": 5.0,
+      "dance_move": -0.7000000000000001,
+      "music_snippet": 4.5,
+      "quick_spin": -1.0,
+      "play_cheer_music": -0.5,
+      "show_surprised_eyes": -0.4
     }
   }
 }

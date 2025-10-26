@@ -1,62 +1,79 @@
-Step 1: Activate Your Conda Environment
-conda activate koko
+# KOKO: Emotion-Aware Interactive Robot
+
+KOKO is a Raspberry Pi 5 project that detects human emotions using a PiCamera, shows animated eyes on a 9.7" display, and triggers robot actions based on the detected emotion.
+
+## Features
+
+- Emotion detection via FER (Facial Expression Recognition)
+- Fullscreen animated eyes using Pygame
+- Robot actions mapped to emotions
+- Feedback loop for iterative improvements (stubbed)
+
+## Setup
+
+1. **Clone the repo:**
+
+```bash
+git clone https://github.com/MSanthosh08/KOKO.git
+cd KOKO
+
+Run the setup script:
+Run the setup script:
+
+chmod +x setup_instructions.sh
+./setup_instructions.sh
 
 
-(You should see (koko) appear at the start of your prompt.)
+Activate virtual environment:
 
-🐍 Step 2: Install What Conda Can Handle (Fast + Precompiled)
-
-Conda installs pre-built ARM-compatible binaries — this saves tons of compile time on the Pi.
-
-conda install -y \
-  flask \
-  opencv \
-  numpy \
-  pandas \
-  scikit-learn \
-  pyserial
+source ~/koko_venv/bin/activate
 
 
-⚠️ opencv from conda provides the same functionality as opencv-python.
-You can skip opencv-python from pip after this.
+Test camera and FER:
 
-🌐 Step 3: Install the Rest via pip
-
-Some packages aren’t on Conda or are better installed from PyPI:
-
-pip install flask-socketio eventlet fer deepface
+python3 test_emotion.py
 
 
-These will install additional dependencies (like TensorFlow or PyTorch for DeepFace).
-On Raspberry Pi, this might take time or even fail if there’s not enough RAM.
-You can use swap space if needed:
+Run KOKO main program:
 
-sudo dphys-swapfile swapoff
-sudo dphys-swapfile setup 2048
-sudo dphys-swapfile swapon
-
-🤖 Step 4: Install ROS Python Library Separately
-
-rospy is not a pip or conda package — it’s part of ROS.
-Install it with apt:
-
-For ROS Noetic:
-
-sudo apt install ros-noetic-rospy
+python3 main.py
 
 
-For ROS 2 (Humble, Foxy, etc.):
+Press q or ESC to quit safely.
 
-sudo apt install ros-humble-rospy
+Repo Structure
+KOKO/
+│ main.py
+│ test_emotion.py
+│ display_eyes.py
+│ robot_controller.py
+│ recommender_engine.py
+│ requirements.txt
+│ setup_instructions.sh
+│ README.md
 
+Robot Actions Mapping
+Emotion	Action
+happy	spin
+sad	gentle_forward
+angry	calm_movement
+neutral	idle
+surprise	jump
+fear	hide
+License
 
-(Replace humble with your actual ROS distro.)
+MIT License
 
-✅ Step 5: Verify Installations
+This repo is fully ready to use:
 
-After everything installs, test in Python:
+main.py runs the robot loop.
 
-python -c "import flask, flask_socketio, eventlet, cv2, numpy, pandas, sklearn, fer, deepface, serial; print('✅ all imports OK')"
+test_emotion.py tests camera + emotion detection.
 
+display_eyes.py handles the animated eyes.
 
-If you see “✅ all imports OK”, you’re good to go.
+robot_controller.py handles hardware or prints actions.
+
+recommender_engine.py is stubbed for now.
+
+setup_instructions.sh sets everything up.
