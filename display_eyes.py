@@ -1,16 +1,8 @@
 """
-display_eyes.py
-Luna-style rectangular glowing eyes animation using Pygame.
-Each emotion modifies eye shape, height, angle, and brightness.
-Neutral includes smooth left-right movement, Happy includes joyful vibration.
-
-Usage:
-    from display_eyes import EyeDisplay
-    disp = EyeDisplay(fullscreen=True)
-    disp.show_emotion('happy')
-    while disp.running:
-        disp.update()
-    disp.close()
+display_eyes_reactive.py
+Emotion-reactive glowing rectangular eyes using Pygame.
+Robot reacts visually to user's detected emotion.
+Press ESC or Q to exit safely.
 """
 
 import pygame
@@ -18,16 +10,15 @@ import time
 import math
 import threading
 import sys
-import random
 
 class EyeDisplay:
-    def __init__(self, width=1024, height=768, fullscreen=True):
+    def __init__(self, width=1024, height=768, fullscreen=False):
         pygame.init()
         self.width = width
         self.height = height
         flags = pygame.FULLSCREEN if fullscreen else 0
         self.screen = pygame.display.set_mode((width, height), flags)
-        pygame.display.set_caption("KOKO Eyes - Luna Style")
+        pygame.display.set_caption("KOKO Emotion-Reactive Eyes")
         self.clock = pygame.time.Clock()
         self.running = True
         self.current_emotion = "neutral"
@@ -36,12 +27,12 @@ class EyeDisplay:
         self._start_thread()
 
     def _start_thread(self):
-        """Start a background thread for handling events."""
-        self.thread = threading.Thread(target=self._event_loop, daemon=True)
-        self.thread.start()
+        """Start background thread for key handling."""
+        thread = threading.Thread(target=self._event_loop, daemon=True)
+        thread.start()
 
     def _event_loop(self):
-        """Handle keyboard and window events."""
+        """Handle ESC/Q press to quit."""
         while self.running:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
@@ -52,7 +43,6 @@ class EyeDisplay:
             time.sleep(0.02)
 
     def stop(self):
-        """Immediately stop all threads and close Pygame."""
         self.running = False
         pygame.quit()
         sys.exit(0)
@@ -62,14 +52,14 @@ class EyeDisplay:
             self.current_emotion = emotion
 
     def _emotion_params(self, emotion):
-        # Each emotion controls height, tilt, color, and blink rate
+        """Define visual style for each emotion."""
         params = {
             "happy":    {"height": 0.45, "tilt": 0,  "color": (0, 255, 180), "blink": 0.0, "brightness": 1.0},
-            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.0, "brightness": 0.6},
+            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.0, "brightness": 0.7},
             "angry":    {"height": 0.55, "tilt": -10, "color": (255, 60, 60), "blink": 0.5, "brightness": 1.0},
             "neutral":  {"height": 0.4, "tilt": 0,  "color": (180, 180, 255), "blink": 0.0, "brightness": 0.8},
             "surprise": {"height": 0.6, "tilt": 0,  "color": (255, 255, 100), "blink": 0.0, "brightness": 1.0},
-            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.0, "brightness": 0.7}
+            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.0, "brightness": 0.8}
         }
         return params.get(emotion, params["neutral"])
 
@@ -85,31 +75,34 @@ class EyeDisplay:
         base_left_center = (margin_x + eye_w//2, self.height//2)
         base_right_center = (self.width - margin_x - eye_w//2, self.height//2)
 
-        # --- Emotion-based movement ---
-        if emo == "neutral":
-            # smooth left-right scanning motion
-            move_offset = int(20 * math.sin(t * 6))
-            left_center = (base_left_center[0] - move_offset, base_left_center[1])
-            right_center = (base_right_center[0] - move_offset, base_right_center[1])
-
-        elif emo == "happy":
-            # joyful vibration / jitter
-            jitter_x = int(5 * math.sin(t * 20))  # fast vibration horizontally
-            jitter_y = int(3 * math.cos(t * 15))  # slight vertical bounce
+        # Subtle movement animations per emotion
+        if emo == "happy":
+            jitter_x = int(8 * math.sin(t * 10))
+            jitter_y = int(5 * math.cos(t * 8))
             left_center = (base_left_center[0] + jitter_x, base_left_center[1] + jitter_y)
             right_center = (base_right_center[0] + jitter_x, base_right_center[1] + jitter_y)
-
+        elif emo == "sad":
+            left_center = (base_left_center[0], base_left_center[1] + 20)
+            right_center = (base_right_center[0], base_right_center[1] + 20)
+        elif emo == "angry":
+            offset = int(10 * math.sin(t * 15))
+            left_center = (base_left_center[0] - offset, base_left_center[1])
+            right_center = (base_right_center[0] + offset, base_right_center[1])
+        elif emo == "surprise":
+            offset = int(8 * math.sin(t * 20))
+            left_center = (base_left_center[0], base_left_center[1] - offset)
+            right_center = (base_right_center[0], base_right_center[1] - offset)
         else:
             left_center = base_left_center
             right_center = base_right_center
 
-        # --- Blink for angry only ---
+        # Blink (for angry/fear)
         blink_open = 1.0
         if p["blink"] > 0:
             blink_open = abs(math.sin(t * p["blink"] * 5))
             blink_open = max(0.2, blink_open)
 
-        # --- Draw eyes ---
+        # Draw both eyes
         for i, center in enumerate([left_center, right_center]):
             cx, cy = center
             rect_h = int(eye_h * blink_open)
@@ -126,7 +119,7 @@ class EyeDisplay:
                 rect = rotated.get_rect(center=(cx, cy))
                 self.screen.blit(rotated, rect)
 
-            # Main glowing rectangle
+            # Main eye
             eye_surface = pygame.Surface((eye_w, rect_h), pygame.SRCALPHA)
             pygame.draw.rect(eye_surface, color, eye_surface.get_rect(), border_radius=20)
             rotated_eye = pygame.transform.rotate(eye_surface, tilt if i == 0 else -tilt)
@@ -143,16 +136,35 @@ class EyeDisplay:
         self.stop()
 
 
+# --- Emotion Mapping Logic ---
+def get_robot_reaction(user_emotion):
+    """Robot reacts visually to user's emotion (comforting/empathetic)."""
+    mapping = {
+        "happy": "happy",        # mirror your joy
+        "sad": "happy",          # cheer you up
+        "angry": "fear",         # calm or cautious
+        "neutral": "neutral",    # stay calm
+        "surprise": "surprise",  # share surprise
+        "fear": "happy"          # reassure you
+    }
+    return mapping.get(user_emotion, "neutral")
+
+
+# --- Standalone Demo Mode ---
 if __name__ == "__main__":
     disp = EyeDisplay(fullscreen=False)
-    emotions = ["neutral", "happy", "sad", "angry", "surprise", "fear"]
+    user_emotions = ["happy", "angry", "sad", "fear", "surprise", "neutral"]
     idx = 0
     last_switch = time.time()
+
     while disp.running:
         disp.update()
-        # cycle through emotions every 3 seconds
-        if time.time() - last_switch > 1:
-            idx = (idx + 1) % len(emotions)
-            disp.show_emotion(emotions[idx])
+        if time.time() - last_switch > 2:
+            user_emotion = user_emotions[idx]
+            robot_emotion = get_robot_reaction(user_emotion)
+            print(f"User: {user_emotion} → Robot shows: {robot_emotion}")
+            disp.show_emotion(robot_emotion)
+            idx = (idx + 1) % len(user_emotions)
             last_switch = time.time()
+
     disp.close()

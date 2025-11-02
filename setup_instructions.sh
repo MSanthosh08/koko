@@ -6,11 +6,11 @@ echo "=== Updating system packages ==="
 sudo apt update && sudo apt upgrade -y
 
 echo "=== Installing system dependencies ==="
-sudo apt install -y python3-pip python3-opencv libatlas-base-dev \
-    libjasper-dev libqtgui4 libqt4-test libilmbase-dev libopenexr-dev \
+sudo apt install -y python3-pip python3-venv python3-opencv libatlas-base-dev \
+    libjpeg-dev libpng-dev libtiff-dev libopenexr-dev libilmbase-dev \
     libgstreamer1.0-dev libavcodec-dev libavformat-dev libswscale-dev \
-    libv4l-dev libxvidcore-dev libx264-dev libjpeg-dev libpng-dev \
-    libtiff-dev gfortran openexr libatlas-base-dev python3-picamera2
+    libv4l-dev libxvidcore-dev libx264-dev gfortran python3-picamera2 \
+    libqtgui4 libqt4-test fonts-freefont-ttf
 
 echo "=== Creating virtual environment koko_venv ==="
 python3 -m venv ~/koko_venv

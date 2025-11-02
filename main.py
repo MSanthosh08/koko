@@ -28,8 +28,8 @@ from recommender_engine import (
 # ---------------- Configuration ----------------
 ROBOT_SERIAL = None       # e.g., '/dev/ttyUSB0' for Arduino
 CAMERA_DEVICE = 0
-LOOP_DELAY = 1.0          # seconds between detections
-AFTER_DELAY = 3.0         # seconds to keep eyes/action active
+LOOP_DELAY = 0.1          # seconds between detections
+AFTER_DELAY = 1.0         # seconds to keep eyes/action active
 ITERATIONS = None         # None = infinite loop
 
 # ---------------- Main Loop ----------------
@@ -56,6 +56,7 @@ def main():
 
     counter = 0
     running = True
+    paused = False
 
     try:
         while running:
@@ -98,6 +99,9 @@ def main():
             t0 = time.time()
             while time.time() - t0 < AFTER_DELAY:
                 display.update(fps=30)
+                if not display.running:
+                    running = False
+                    break
 
             # Re-evaluate emotion after action for feedback
             frame2 = picam2.capture_array()
@@ -124,6 +128,10 @@ def main():
             t1 = time.time()
             while time.time() - t1 < LOOP_DELAY:
                 display.update(fps=30)
+                if not display.running:
+                    running = False
+                    break
+
 
             # Handle quit events
             for event in pygame.event.get():
@@ -132,6 +140,11 @@ def main():
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_q or event.key == pygame.K_ESCAPE:
                         running = False
+                elif event.key == pygame.K_SPACE:
+                    paused = not paused
+                    state = "⏸️ PAUSED" if paused else "▶️ RESUMED"
+                print(f"[MAIN] {state}")
+
 
     except KeyboardInterrupt:
         print("Interrupted by user.")
