@@ -1,13 +1,14 @@
 """
 display_eyes.py
-Pygame-based fullscreen animated eyes for each emotion.
-This draws procedural eyes (no external images required) and changes pupil size, blink rate, eye tilt, color, etc. per emotion.
+Luna-style rectangular glowing eyes animation using Pygame.
+Each emotion modifies eye shape, height, angle, and brightness.
 
 Usage:
     from display_eyes import EyeDisplay
     disp = EyeDisplay(fullscreen=True)
     disp.show_emotion('happy')
-    disp.update_loop()  # returns until stop requested in main loop
+    while disp.running:
+        disp.update()
     disp.close()
 """
 
@@ -15,6 +16,7 @@ import pygame
 import time
 import math
 import threading
+import sys
 
 class EyeDisplay:
     def __init__(self, width=1024, height=768, fullscreen=True):
@@ -23,42 +25,49 @@ class EyeDisplay:
         self.height = height
         flags = pygame.FULLSCREEN if fullscreen else 0
         self.screen = pygame.display.set_mode((width, height), flags)
-        pygame.display.set_caption("KOKO Eyes")
+        pygame.display.set_caption("KOKO Eyes - Luna Style")
         self.clock = pygame.time.Clock()
         self.running = True
         self.current_emotion = "neutral"
         self.lock = threading.Lock()
-        self.bg_color = (20, 20, 30)
-        # start event pump thread to keep window responsive if needed
+        self.bg_color = (10, 10, 20)
         self._start_thread()
 
     def _start_thread(self):
+        """Start a background thread for handling events."""
         self.thread = threading.Thread(target=self._event_loop, daemon=True)
         self.thread.start()
 
     def _event_loop(self):
+        """Handle keyboard and window events."""
         while self.running:
             for ev in pygame.event.get():
                 if ev.type == pygame.QUIT:
-                    self.running = False
+                    self.stop()
                 elif ev.type == pygame.KEYDOWN:
-                    if ev.key == pygame.K_ESCAPE:
-                        self.running = False
+                    if ev.key in (pygame.K_ESCAPE, pygame.K_q):
+                        self.stop()
             time.sleep(0.02)
+
+    def stop(self):
+        """Immediately stop all threads and close Pygame."""
+        self.running = False
+        pygame.quit()
+        sys.exit(0)
 
     def show_emotion(self, emotion):
         with self.lock:
             self.current_emotion = emotion
 
     def _emotion_params(self, emotion):
-        # returns dict: pupil_scale, blink_rate, eye_color, offset, tilt
+        # Each emotion controls height, tilt, color, and blink rate
         params = {
-            "happy": {"pupil": 0.35, "blink": 4.0, "color": (50,200,120), "tilt": 5},
-            "sad": {"pupil": 0.25, "blink": 1.5, "color": (120,170,230), "tilt": -6},
-            "angry": {"pupil": 0.2, "blink": 6.0, "color": (220,80,60), "tilt": -12},
-            "neutral": {"pupil": 0.3, "blink": 3.0, "color": (200,200,200), "tilt": 0},
-            "surprise": {"pupil": 0.5, "blink": 8.0, "color": (255,255,180), "tilt": 0},
-            "fear": {"pupil": 0.15, "blink": 1.0, "color": (200,150,255), "tilt": 0}
+            "happy":    {"height": 0.45, "tilt": 0,  "color": (0, 255, 180), "blink": 0.1, "brightness": 1.0},
+            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.1, "brightness": 0.6},
+            "angry":    {"height": 0.55, "tilt": -10, "color": (255, 60, 60), "blink": 0.1, "brightness": 1.0},
+            "neutral":  {"height": 0.4, "tilt": 0,  "color": (180, 180, 255), "blink": 0.1, "brightness": 0.8},
+            "surprise": {"height": 0.6, "tilt": 0,  "color": (255, 255, 100), "blink": 0.1, "brightness": 1.0},
+            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.1, "brightness": 0.7}
         }
         return params.get(emotion, params["neutral"])
 
@@ -66,59 +75,64 @@ class EyeDisplay:
         with self.lock:
             emo = self.current_emotion
         p = self._emotion_params(emo)
+
         self.screen.fill(self.bg_color)
-        # eye positions
-        margin_x = int(self.width * 0.12)
-        eye_w = int(self.width * 0.36)
-        eye_h = int(self.height * 0.5)
+        margin_x = int(self.width * 0.18)
+        eye_w = int(self.width * 0.25)
+        eye_h = int(self.height * p["height"])
         left_center = (margin_x + eye_w//2, self.height//2)
         right_center = (self.width - margin_x - eye_w//2, self.height//2)
 
-        for center in (left_center, right_center):
+        # Blink (only for neutral)
+        blink_open = 1.0
+        if p["blink"] > 0:
+            blink_open = abs(math.sin(t * p["blink"]))
+            blink_open = max(0.2, blink_open)
+
+        for i, center in enumerate([left_center, right_center]):
             cx, cy = center
-            # white sclera
-            sclera_rect = pygame.Rect(0,0, eye_w, eye_h)
-            sclera_rect.center = (cx, cy)
-            pygame.draw.ellipse(self.screen, (245,245,245), sclera_rect)
-
-            # eye tilt transform (simple: shift pupil y slightly)
+            rect_h = int(eye_h * blink_open)
+            rect_y = cy - rect_h // 2
             tilt = p["tilt"]
-            # pupil movement oscillation to look alive
-            ox = int(math.sin(t*1.2 + cx) * 10)
-            oy = int(math.cos(t*0.8 + cy) * 6) + tilt
+            color = tuple(int(c * p["brightness"]) for c in p["color"])
 
-            # iris circle
-            iris_radius = int(min(eye_w, eye_h) * 0.18)
-            iris_pos = (cx + ox, cy + oy)
-            pygame.draw.circle(self.screen, p["color"], iris_pos, iris_radius)
+            # Glow effect
+            for glow in range(4, 0, -1):
+                alpha = max(20, 60 - glow * 10)
+                glow_rect = pygame.Surface((eye_w + glow*10, rect_h + glow*6), pygame.SRCALPHA)
+                glow_color = (*color, alpha)
+                pygame.draw.rect(glow_rect, glow_color, glow_rect.get_rect(), border_radius=20)
+                rotated = pygame.transform.rotate(glow_rect, tilt if i == 0 else -tilt)
+                rect = rotated.get_rect(center=(cx, cy))
+                self.screen.blit(rotated, rect)
 
-            # pupil
-            pupil_radius = int(iris_radius * (p["pupil"]))
-            pygame.draw.circle(self.screen, (20,20,20), iris_pos, pupil_radius)
-
-            # highlight
-            pygame.draw.circle(self.screen, (255,255,255), (iris_pos[0]-int(pupil_radius*0.4), iris_pos[1]-int(pupil_radius*0.4)), max(2, pupil_radius//4))
-
-            # subtle eyelid (blink)
-            blink = (math.sin(t * p["blink"]) + 1.0) / 2.0  # 0..1
-            lid_height = int(eye_h * (0.08 + 0.25 * (1.0 - blink)))  # when blink small -> open
-            top_lid = pygame.Rect(sclera_rect.left, sclera_rect.top, sclera_rect.width, lid_height)
-            bottom_lid = pygame.Rect(sclera_rect.left, sclera_rect.bottom - lid_height, sclera_rect.width, lid_height)
-            pygame.draw.rect(self.screen, self.bg_color, top_lid)
-            pygame.draw.rect(self.screen, self.bg_color, bottom_lid)
-
-        # small text optional
-        # font = pygame.font.SysFont(None, 28)
-        # text = font.render(emo.upper(), True, (200,200,200))
-        # self.screen.blit(text, (10, 10))
+            # Main glowing rectangle
+            eye_surface = pygame.Surface((eye_w, rect_h), pygame.SRCALPHA)
+            pygame.draw.rect(eye_surface, color, eye_surface.get_rect(), border_radius=20)
+            rotated_eye = pygame.transform.rotate(eye_surface, tilt if i == 0 else -tilt)
+            rect = rotated_eye.get_rect(center=(cx, cy))
+            self.screen.blit(rotated_eye, rect)
 
     def update(self, fps=30):
-        # call in your main loop to update display
         t = time.time()
         self.draw_eyes(t)
         pygame.display.flip()
         self.clock.tick(fps)
 
     def close(self):
-        self.running = False
-        pygame.quit()
+        self.stop()
+
+
+if __name__ == "__main__":
+    disp = EyeDisplay(fullscreen=False)
+    emotions = ["neutral", "happy", "sad", "angry", "surprise", "fear"]
+    idx = 0
+    last_switch = time.time()
+    while disp.running:
+        disp.update()
+        # cycle through emotions every 3 seconds
+        if time.time() - last_switch > 1:
+            idx = (idx + 1) % len(emotions)
+            disp.show_emotion(emotions[idx])
+            last_switch = time.time()
+    disp.close()

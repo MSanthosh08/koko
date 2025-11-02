@@ -22,7 +22,7 @@ def main():
         # Capture frame from camera
         frame = picam2.capture_array()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
+        frame = cv2.rotate(frame, cv2.ROTATE_180)  # ?? Rotate 180 degrees
         # Detect emotions
         results = detector.detect_emotions(frame)
 
