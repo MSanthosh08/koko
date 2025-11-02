@@ -2,6 +2,7 @@
 display_eyes.py
 Luna-style rectangular glowing eyes animation using Pygame.
 Each emotion modifies eye shape, height, angle, and brightness.
+Neutral includes smooth left-right movement, Happy includes joyful vibration.
 
 Usage:
     from display_eyes import EyeDisplay
@@ -17,6 +18,7 @@ import time
 import math
 import threading
 import sys
+import random
 
 class EyeDisplay:
     def __init__(self, width=1024, height=768, fullscreen=True):
@@ -62,12 +64,12 @@ class EyeDisplay:
     def _emotion_params(self, emotion):
         # Each emotion controls height, tilt, color, and blink rate
         params = {
-            "happy":    {"height": 0.45, "tilt": 0,  "color": (0, 255, 180), "blink": 0.1, "brightness": 1.0},
-            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.1, "brightness": 0.6},
-            "angry":    {"height": 0.55, "tilt": -10, "color": (255, 60, 60), "blink": 0.1, "brightness": 1.0},
-            "neutral":  {"height": 0.4, "tilt": 0,  "color": (180, 180, 255), "blink": 0.1, "brightness": 0.8},
-            "surprise": {"height": 0.6, "tilt": 0,  "color": (255, 255, 100), "blink": 0.1, "brightness": 1.0},
-            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.1, "brightness": 0.7}
+            "happy":    {"height": 0.45, "tilt": 0,  "color": (0, 255, 180), "blink": 0.0, "brightness": 1.0},
+            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.0, "brightness": 0.6},
+            "angry":    {"height": 0.55, "tilt": -10, "color": (255, 60, 60), "blink": 0.5, "brightness": 1.0},
+            "neutral":  {"height": 0.4, "tilt": 0,  "color": (180, 180, 255), "blink": 0.0, "brightness": 0.8},
+            "surprise": {"height": 0.6, "tilt": 0,  "color": (255, 255, 100), "blink": 0.0, "brightness": 1.0},
+            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.0, "brightness": 0.7}
         }
         return params.get(emotion, params["neutral"])
 
@@ -80,19 +82,37 @@ class EyeDisplay:
         margin_x = int(self.width * 0.18)
         eye_w = int(self.width * 0.25)
         eye_h = int(self.height * p["height"])
-        left_center = (margin_x + eye_w//2, self.height//2)
-        right_center = (self.width - margin_x - eye_w//2, self.height//2)
+        base_left_center = (margin_x + eye_w//2, self.height//2)
+        base_right_center = (self.width - margin_x - eye_w//2, self.height//2)
 
-        # Blink (only for neutral)
+        # --- Emotion-based movement ---
+        if emo == "neutral":
+            # smooth left-right scanning motion
+            move_offset = int(20 * math.sin(t * 6))
+            left_center = (base_left_center[0] - move_offset, base_left_center[1])
+            right_center = (base_right_center[0] - move_offset, base_right_center[1])
+
+        elif emo == "happy":
+            # joyful vibration / jitter
+            jitter_x = int(5 * math.sin(t * 20))  # fast vibration horizontally
+            jitter_y = int(3 * math.cos(t * 15))  # slight vertical bounce
+            left_center = (base_left_center[0] + jitter_x, base_left_center[1] + jitter_y)
+            right_center = (base_right_center[0] + jitter_x, base_right_center[1] + jitter_y)
+
+        else:
+            left_center = base_left_center
+            right_center = base_right_center
+
+        # --- Blink for angry only ---
         blink_open = 1.0
         if p["blink"] > 0:
-            blink_open = abs(math.sin(t * p["blink"]))
+            blink_open = abs(math.sin(t * p["blink"] * 5))
             blink_open = max(0.2, blink_open)
 
+        # --- Draw eyes ---
         for i, center in enumerate([left_center, right_center]):
             cx, cy = center
             rect_h = int(eye_h * blink_open)
-            rect_y = cy - rect_h // 2
             tilt = p["tilt"]
             color = tuple(int(c * p["brightness"]) for c in p["color"])
 
