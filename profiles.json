@@ -23,7 +23,8 @@
       "show_surprised_eyes": -1.9,
       "gentle_forward": 5.0,
       "reward_learning": -2.4,
-      "celebrate": -2.5
+      "celebrate": -2.5,
+      "retreat_slow": 1.0
     }
   }
 }

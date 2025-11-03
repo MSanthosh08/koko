@@ -26,7 +26,7 @@ from recommender_engine import (
 )
 
 # ---------------- Configuration ----------------
-ROBOT_SERIAL = None       # e.g., '/dev/ttyUSB0' for Arduino
+ROBOT_SERIAL = "/dev/ttyUSB0"       # e.g., '/dev/ttyUSB0' for Arduino
 CAMERA_DEVICE = 0
 LOOP_DELAY = 0.1          # seconds between detections
 AFTER_DELAY = 1.0         # seconds to keep eyes/action active

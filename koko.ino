@@ -46,19 +46,19 @@ void loop() {
     Serial.print("Emotion received: ");
     Serial.println(emotion);
 
-    if (emotion == "HAPPY") {
+    if (emotion == "REWARD_LEARNING") {
       actionHappy();
     } 
-    else if (emotion == "SAD") {
+    else if (emotion == "GENTLE_FORWARD") {
       actionSad();
     } 
-    else if (emotion == "ANGRY") {
+    else if (emotion == "SLOW_BACK") {
       actionAngry();
     } 
-    else if (emotion == "NEUTRAL") {
+    else if (emotion == "INTERACTIVE_PROMPT") {
       actionNeutral();
     } 
-    else if (emotion == "SURPRISE") {
+    else if (emotion == "SHOW_SURPRISED_EYES") {
       actionSurprise();
     } 
     else {
