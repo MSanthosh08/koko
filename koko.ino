@@ -119,17 +119,17 @@ void stopMotion() {
 void actionHappy() {
   Serial.println("🙂 HAPPY → forward spin + backward spin (fast)");
   spinRight(255);
-  delay(1500);
+  delay(1000);
   backward(255);
   delay(1000);
   stopMotion();
   spinRight(255);
-  delay(1500);
+  delay(1000);
   backward(255);
   delay(1000);
   stopMotion();
   spinRight(255);
-  delay(1500);
+  delay(1000);
   backward(255);
   delay(1000);
   stopMotion();
@@ -138,7 +138,7 @@ void actionHappy() {
 void actionSad() {
   Serial.println("😔 SAD → slow spin");
   spinRight(200);
-  delay(8000);
+  delay(1000);
   stopMotion();
 }
 
@@ -163,18 +163,18 @@ void actionNeutral() {
 void actionSurprise() {
   Serial.println("😲 SURPRISE → quick forward + backward");
   forward(255);
-  delay(700);
+  delay(1000);
   backward(255);
-  delay(700);
+  delay(1000);
   stopMotion();
   forward(255);
-  delay(700);
+  delay(1000);
   backward(255);
-  delay(700);
+  delay(1000);
   stopMotion();
   forward(255);
-  delay(700);
+  delay(1000);
   backward(255);
-  delay(700);
+  delay(1000);
   stopMotion();
 }

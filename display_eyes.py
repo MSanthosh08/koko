@@ -54,12 +54,12 @@ class EyeDisplay:
     def _emotion_params(self, emotion):
         """Define visual style for each emotion."""
         params = {
-            "happy":    {"height": 0.45, "tilt": 0,  "color": (0, 255, 180), "blink": 0.0, "brightness": 1.0},
-            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.0, "brightness": 0.7},
+            "happy":    {"height": 0.45, "tilt": 0,  "color": (0, 255, 180), "blink": 0.2, "brightness": 1.0},
+            "sad":      {"height": 0.25, "tilt": 10, "color": (100, 150, 255), "blink": 0.2, "brightness": 0.7},
             "angry":    {"height": 0.55, "tilt": -10, "color": (255, 60, 60), "blink": 0.5, "brightness": 1.0},
-            "neutral":  {"height": 0.4, "tilt": 0,  "color": (180, 180, 255), "blink": 0.0, "brightness": 0.8},
-            "surprise": {"height": 0.6, "tilt": 0,  "color": (255, 255, 100), "blink": 0.0, "brightness": 1.0},
-            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.0, "brightness": 0.8}
+            "neutral":  {"height": 0.4, "tilt": 0,  "color": (180, 180, 255), "blink": 0.2, "brightness": 0.8},
+            "surprise": {"height": 0.6, "tilt": 0,  "color": (255, 255, 100), "blink": 0.3, "brightness": 1.0},
+            "fear":     {"height": 0.3, "tilt": 0,  "color": (200, 100, 255), "blink": 0.2, "brightness": 0.8}
         }
         return params.get(emotion, params["neutral"])
 
